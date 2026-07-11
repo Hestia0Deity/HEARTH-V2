@@ -20,6 +20,24 @@ class testing(commands.Cog):
         # db.commit()
         print("testing.py -- ONLINE")
 
+    @app_commands.command(name="db-search", description="[OWNER] Executes a specified search in the database")
+    async def db_search(self, interaction:discord.Interaction, database:str, search:str):
+        if interaction.user.id != 746931991827447818:
+            await interaction.response.send_message(f"<@746931991827447818> - They tried to use the database command:\n{search}")
+            return
+
+        cursor.execute(f"SELECT * FROM {database} WHERE {search}")
+        await interaction.response.send_message(f"{cursor.fetchone()} \n  {[desc[0] for desc in cursor.description]}", ephemeral=True)
+
+    @app_commands.command(name="db-command", description="[OWNER] Executes a specified command in the database")
+    async def db_command(self, interaction:discord.Interaction, command:str):
+        if interaction.user.id != 746931991827447818:
+            await interaction.response.send_message(f"<@746931991827447818> - They tried to use the database command:\n{command}")
+            return
+        
+        cursor.execute(command)
+        db.commit()
+
     @app_commands.command(name="download-image", description="[TESTING] Downloads an image")
     async def download_image(self, interaction:discord.Interaction, image:discord.Attachment):
         print(f"{image.filename} @ {image.size} B")
