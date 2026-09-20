@@ -24,8 +24,8 @@ class characterIndex(commands.Cog):
                    guildID INT NOT NULL,
                    userID INT NOT NULL,
                    muse STRING NOT NULL,
-                   age STRING, rank STRING, position STRING, department STRING, division STRING, 
-                   platoon STRING, status STRING, partner STRING, sexuality STRING, avatarPath STRING, 
+                   age STRING, faction STRING, occupation STRING, rank STRING, arcane_level STRING, 
+                   arcane_affiliation STRING, status STRING, partner STRING, sexuality STRING, avatarPath STRING, 
                    description STRING,
                    PRIMARY KEY (muse, userID, guildID)
                    FOREIGN KEY (muse, userID, guildID) REFERENCES museDatabase (muse, userID, guildID)
@@ -34,9 +34,16 @@ class characterIndex(commands.Cog):
         # it'll also be deleted from museInfoDatabase
         db.execute(f"PRAGMA foreign_keys = ON")
         db.commit()
+
+        # Adds all characters from the museDatabase into the museInfoDatbase
+        cursor.execute(f"""INSERT OR IGNORE INTO museInfoDatabase (guildID, userID, muse)
+        SELECT guildID, userID, muse FROM museDatabase""")
+        db.commit()
         print("characterIndex.py -- ONLINE")
 
 
+
+    
     # /search-muses
     @app_commands.command(name="search-muses", description="Searches the database for any muse with a matching name")
     @app_commands.describe(
@@ -251,12 +258,12 @@ class characterIndex(commands.Cog):
     )
     @app_commands.choices(type=[
         app_commands.Choice(name="Age", value="age"),
+        app_commands.Choice(name="Faction", value="faction"),
+        app_commands.Choice(name="Occupation", value="occupation"),
         app_commands.Choice(name="Rank", value="rank"),
-        app_commands.Choice(name="Position", value="position"),
-        app_commands.Choice(name="Department", value="department"),
-        app_commands.Choice(name="Division", value="division"),
-        app_commands.Choice(name="Platoon/Unit", value="platoon"),
-        app_commands.Choice(name="Status", value="status"),
+        app_commands.Choice(name="Arcane Level", value="arcane_level"),
+        app_commands.Choice(name="Arcane Affiliation", value="arcane_affiliation"),
+        app_commands.Choice(name="Romantic Status", value="status"),
         app_commands.Choice(name="Partner", value="partner"),
         app_commands.Choice(name="Sexuality", value="sexuality")
     ])
@@ -383,8 +390,8 @@ class characterIndex(commands.Cog):
 # Creates the embed from the retrived lists
 async def get_character_embed(interaction: discord.Interaction, muse_list: list, info_list: list) -> discord.Embed:
     # Mapping for the embed information list.
-    information_mapping = ["Age", "Rank", "Position", 
-                       "Department", "Division", "Platoon",
+    information_mapping = ["Age", "Faction", "Occupation", 
+                       "Rank", "Arcane_Level", "Arcane_Affiliation",
                        "Status", "Partner", "Sexuality"]
     
     # Gets the accepted character link
@@ -504,14 +511,14 @@ class EditOptions(discord.ui.View):
         placeholder="What options do you want to edit? (Max 5)",
         options=[
             discord.SelectOption(label="Age"),
+            discord.SelectOption(label="Faction"),
+            discord.SelectOption(label="Occupation"),
             discord.SelectOption(label="Rank"),
-            discord.SelectOption(label="Position"),
-            discord.SelectOption(label="Department"),
-            discord.SelectOption(label="Division"),
-            discord.SelectOption(label="Platoon"),
+            discord.SelectOption(label="Arcane Level"),
+            discord.SelectOption(label="Arcane Affiliation"),
             discord.SelectOption(label="Partner"),
             discord.SelectOption(label="Sexuality"),
-            discord.SelectOption(label="Status"),
+            discord.SelectOption(label="Romantic Status"),
             discord.SelectOption(label="Description")
         ],
         min_values=1, max_values=5
@@ -527,14 +534,14 @@ class EditProfileModal(discord.ui.Modal):
         self.inputs = []
         self.field_map = {
             "Age": 5,
-            "Rank": 6,
-            "Position": 7,
-            "Department": 8,
-            "Division": 9,
-            "Platoon/Unit": 10,
+            "Faction": 6,
+            "Occupation": 7,
+            "Rank": 8,
+            "Arcane Level": 9,
+            "Arcane Affiliation": 10,
             "Partner": 12,
             "Sexuality": 13,
-            "Status": 11,
+            "Romantic Status": 11,
             "Profile Description": 15,
         }
 
@@ -552,6 +559,8 @@ class EditProfileModal(discord.ui.Modal):
             self.add_item(item)
 
     async def on_submit(self, interaction:discord.Interaction):
+        completed_log = ""
+
         for item in self.inputs:
             # Sets it to None so it actually appears as Null in the database.
             if item.value == "":
@@ -560,14 +569,12 @@ class EditProfileModal(discord.ui.Modal):
                 value = item.value
             
             # Updates the database.
-            cursor.execute(f"UPDATE museInfoDatabase SET {item.label.lower()} = ? WHERE guildID = ? AND muse = ?", 
+            cursor.execute(f"UPDATE museInfoDatabase SET {(item.label.lower()).replace(' ', '_')} = ? WHERE guildID = ? AND muse = ?", 
                            (value,self.muse[0], self.muse[2]))
+            completed_log += f"> - {item.label} → {value}\n"
         db.commit()
 
-        await interaction.response.send_message("""The following action(s) were completed:
-                                                > - yapyapyap complete this later me.""", ephemeral=True)
-
-
+        await interaction.response.send_message("The following action(s) were completed:\n" + completed_log, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(characterIndex(bot))

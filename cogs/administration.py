@@ -38,7 +38,8 @@ class administration(commands.Cog):
         app_commands.Choice(name="Muse Submissions",value="SUBMISSIONS"),
         app_commands.Choice(name="Muse Management",value="MANAGEMENT"),
         app_commands.Choice(name="Muse Reviews",value="REVIEWS"),
-        app_commands.Choice(name="Introductions Channel", value="INTROS")
+        app_commands.Choice(name="Introductions Channel", value="INTROS"),
+        app_commands.Choice(name="Reservations Channel", value="RESERVATIONS")
     ])
     @app_commands.describe(
         type="The type of channel to be updated",
@@ -63,7 +64,7 @@ class administration(commands.Cog):
             await interaction.response.send_message("The channel has been updated.", ephemeral=True)
 
         # logs the action
-        await log_action(interaction, interaction.user, 1, "/set-channel", f"Updated Channel - {type.name}")
+        await log_action(interaction, 1, "/set-channel", f"Updated Channel - {type.name}")
 
 
 
@@ -99,7 +100,7 @@ class administration(commands.Cog):
             await interaction.response.send_message("The role has been updated.", ephemeral=True)
 
         # logs the action
-        await log_action(interaction, interaction.user, 1, "/set-role", f"Updated Role - {type.name}")
+        await log_action(interaction, 1, "/set-role", f"Updated Role - {type.name}")
 
 
 

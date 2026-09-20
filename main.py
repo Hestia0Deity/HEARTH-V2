@@ -1,5 +1,7 @@
 import dotenv, os, discord, asyncio
 from discord.ext import commands
+from cogs.verification import TagButtons
+from cogs.submissions import submissionButtons
 
 
 # Gets and loads the information from .env for os
@@ -14,7 +16,12 @@ async def load():
         if filename.endswith(".py"):
             await client.load_extension(f'cogs.{filename[:-3]}')
 
-# Setup hook (TBD)
+# Setup hook
+async def setup_hook():
+    client.add_view(TagButtons())
+    client.add_view(submissionButtons())
+
+client.setup_hook = setup_hook
 
 # Syncing commands
 @client.command()

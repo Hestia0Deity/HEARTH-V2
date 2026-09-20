@@ -44,17 +44,52 @@ class verification(commands.Cog):
         await message.author.remove_roles(unverifRole)
         await message.author.add_roles(verifRole)
 
+
+    # @app_commands.command(name="set-tags", description="[STAFF] - Sets the tags for the server, please use /setup-verification after it.")
+    # @app_commands.checks.has_permissions(administrator = True)
+    # @app_commands.describe(
+    #     tags = "The tags for the server, seperated by comma and space. Eg. yuri, girls-kissing, wlw, roleplay-too-ig"
+    # )
+    # async def set_tags(self, interaction:discord.Interaction, tags: str):
+    #     # Checks to see if one exists
+    #     cursor.execute(f"SELECT purpose FROM administrationDatabase WHERE class = 'TAGS' AND guildID = ?",
+    #                                        (interaction.guild.id,))
+    #     tags = cursor.fetchone()
+
+    #     if tags is None:
+    #         cursor.execute(f"INSERT INTO administrationDatabase(guildID, class, classID, purpose) VALUES (?,?,?,?)",
+    #                        (interaction.guild.id, 'TAGS', 0, tags))
+    #     else:
+    #         cursor.execute(f"UPDATE administrationDatabase SET purpose = ? WHERE guildID = ? AND class = ?",
+    #                        (tags, interaction.guild.id, 'TAGS'))
+    #     db.commit()
+
+    #     # Logs the action
+    #     await log_action(interaction, 2, "/set-tags",
+    #                      f"<@{interaction.user.id}> has set the tags of the server to be: {tags}")
+
+    #     # Confirms it's been updated.
+    #     await interaction.response.send_message("Successfully updated the tags for the server.", ephemeral=True)
+        
+
     
 
     # Sets up the verification system
-    @app_commands.command(name="setup-verification", description="[STAFF] - Sets up the verification system for the server, adding tags and such")
+    @app_commands.command(name="setup-verification", description="[STAFF] - Sends the verification system embed.")
     @app_commands.checks.has_permissions(administrator = True)
     @app_commands.describe(
         channel="The channel in which the buttons are being sent",
-        message="The message to add to the buttons."
         )
-    async def setup_verification(self, interaction:discord.Interaction, channel:discord.TextChannel, message:str):
-        await channel.send(message, view=TagButtons())
+    async def setup_verification(self, interaction:discord.Interaction, channel:discord.TextChannel):
+        # Verification embed
+        verification_embed = discord.Embed(
+            title="Server Verification~",
+            colour=discord.Colour.greyple(),
+            description="To enter the server, we ask that you select which tag you used to join the server, just so we can tell"+
+            " what tags work, and what tags don't! \n-# You can also check this information using /get-tag-stats.~"
+        )
+        await channel.send(embed=verification_embed, view=TagButtons())
+        await interaction.response.send_message("The verification system has been successfully sent!", ephemeral=True)
 
 
 
@@ -104,231 +139,81 @@ class verification(commands.Cog):
 class TagButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        tags = ["roleplay", "fantasy", "fantasy-rp", "anime-rp", "yuri"]
 
-    @discord.ui.button(label="roleplay",style=discord.ButtonStyle.gray, custom_id="roleplay")
-    async def button1(self, interaction: discord.Interaction, Button: discord.ui.Button):
+        for tag in tags:
+            button = discord.ui.Button(
+                label=tag, custom_id=tag,
+                style=discord.ButtonStyle.gray
+            )
+            button.callback = self.verification_button
+            self.add_item(button)
+
+        na_button = discord.ui.Button(
+            label="N/A", custom_id="N/A",
+            style=discord.ButtonStyle.danger)
+        na_button.callback = self.na_button
+        self.add_item(na_button)
+
+        
+    async def verification_button(self, interaction: discord.Interaction):
         # Sends a confirmation message
         await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
+        await interaction.user.send('''Thank you for verifying! You should now have access to an introductions channel, in which you can send an introduction, which will give you access to the rest of the server!''')
         
         #  Check if exists
-        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, self.button1.custom_id))
+        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, interaction.data["custom_id"]))
         result = cursor.fetchone()
+        print(f"result = {result}")
+        print(interaction.data["custom_id"])
 
-        # Role logic
+        # Updating the database values
         cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-                        (interaction.guild.id, self.button1.custom_id))
+                        (interaction.guild.id,interaction.data["custom_id"]))
         if result is not None:
             cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-                        (result[0]+1, interaction.guild.id, self.button1.custom_id))
+                        (result[0]+1, interaction.guild.id, interaction.data["custom_id"]))
         db.commit()
 
+        # Finding the relevant role IDs
         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        try:
+            verifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        except:
+            raise ValueError("There is no stage1 verification role set.")
         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        try:
+            unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        except:
+            raise ValueError("There is no unverified role set.")
 
+        # Adding and removing roles.
         await interaction.user.remove_roles(unverifRole)
         await interaction.user.add_roles(verifRole)
 
 
-    @discord.ui.button(label="slice-of-life",style=discord.ButtonStyle.gray, custom_id="slice-of-life")
-    async def button2(self, interaction: discord.Interaction, Button: discord.ui.Button):
+    # The N/A Button if they joined through another method
+    async def na_button(self, interaction: discord.Interaction):
         # Sends a confirmation message
         await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
-        
-        #  Check if exists
-        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, self.button2.custom_id))
-        result = cursor.fetchone()
+        await interaction.user.send('''Thank you for verifying! You should now have access to an introductions channel, in which you can send an introduction, which will give you access to the rest of the server!''')
 
-        # Role logic
-        cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-                        (interaction.guild.id, self.button2.custom_id))
-        if result is not None:
-            cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-                        (result[0]+1, interaction.guild.id, self.button2.custom_id))
-        db.commit()
-
+        # Finding the relevant role IDs
         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        try:
+            verifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        except:
+            raise ValueError("There is no stage1 verification role set.")
         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        try:
+            unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
+        except:
+            raise ValueError("There is no unverified role set.")
 
-        await interaction.user.remove_roles(unverifRole)
-        await interaction.user.add_roles(verifRole)
-    
-
-    @discord.ui.button(label="yuri",style=discord.ButtonStyle.gray, custom_id="yuri")
-    async def button3(self, interaction: discord.Interaction, Button: discord.ui.Button):
-        # Sends a confirmation message
-        await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
-        
-        #  Check if exists
-        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, self.button3.custom_id))
-        result = cursor.fetchone()
-
-        # Role logic
-        cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-                        (interaction.guild.id, self.button3.custom_id))
-        if result is not None:
-            cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-                        (result[0]+1, interaction.guild.id, self.button3.custom_id))
-        db.commit()
-
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
-        await interaction.user.remove_roles(unverifRole)
-        await interaction.user.add_roles(verifRole)
-    
-
-    @discord.ui.button(label="anime-rp",style=discord.ButtonStyle.gray, custom_id="anime-rp")
-    async def button4(self, interaction: discord.Interaction, Button: discord.ui.Button):
-        # Sends a confirmation message
-        await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
-        
-        #  Check if exists
-        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, self.button4.custom_id))
-        result = cursor.fetchone()
-
-        # Role logic
-        cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-                        (interaction.guild.id, self.button4.custom_id))
-        if result is not None:
-            cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-                        (result[0]+1, interaction.guild.id, self.button4.custom_id))
-        db.commit()
-
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
-        await interaction.user.remove_roles(unverifRole)
-        await interaction.user.add_roles(verifRole)
-    
-
-    @discord.ui.button(label="arknights",style=discord.ButtonStyle.gray, custom_id="arknights")
-    async def button5(self, interaction: discord.Interaction, Button: discord.ui.Button):
-        # Sends a confirmation message
-        await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
-        
-        #  Check if exists
-        cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, self.button5.custom_id))
-        result = cursor.fetchone()
-
-        # Role logic
-        cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-                        (interaction.guild.id, self.button5.custom_id))
-        if result is not None:
-            cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-                        (result[0]+1, interaction.guild.id, self.button5.custom_id))
-        db.commit()
-
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
+        # Adding and removing roles.
         await interaction.user.remove_roles(unverifRole)
         await interaction.user.add_roles(verifRole)
 
-
-    @discord.ui.button(label="n/a",style=discord.ButtonStyle.red, custom_id="n/a")
-    async def button6(self, interaction: discord.Interaction, Button: discord.ui.Button):
-        # Sends a confirmation message
-        await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to <#1460101223695908879>, in which you can send an introduction, which will give you access to the rest of the server!\n-# You can find the introduction template [here](https://canary.discord.com/channels/1460101221036720180/1460101223695908879/1460439147121742100).''')
-        
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED_TWO'", (interaction.guild.id,))
-        verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-        cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-        unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
-        await interaction.user.remove_roles(unverifRole)
-        await interaction.user.add_roles(verifRole)
-
-
-
-# class TagButtons(discord.ui.View):
-#     def __init__(self, tags: list[str]):
-#         super().__init__(timeout=None)
-#         self.tags = tags
-
-#         for tag in tags:
-#             button = discord.ui.Button(
-#                 label=tag,
-#                 style = discord.ButtonStyle.blurple,
-#                 custom_id=tag
-#             )
-#             button.callback = self.make_callback(tag)
-#             self.add_item(button)
-
-#         noneButton = discord.ui.Button(
-#             label="N/A",
-#             style = discord.ButtonStyle.red,
-#             custom_id="N/A"
-#         )
-#         noneButton.callback = self.none_callback
-#         self.add_item(noneButton)
-
-#     def make_callback(self, tag: str):
-#         async def callback(interaction: discord.Interaction):
-#             # Check if exists
-#             cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, tag))
-#             result = cursor.fetchone()
-
-
-#             # Sends confirmation message
-#             await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-
-
-#             # Role logic
-#             cursor.execute("INSERT OR IGNORE INTO tagDatabase(guildID, tag, tagUses) VALUES (?, ?, 1)",
-#                            (interaction.guild.id, tag))
-#             if result is not None:
-#                 cursor.execute("UPDATE tagDatabase SET tagUses = ? WHERE guildID = ? AND tag = ?",
-#                             (result[0]+1, interaction.guild.id, tag))
-#             db.commit()
-
-
-#             # Verification Role 
-#             cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'VERIFIED'", (interaction.guild.id,))
-#             verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-#             cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-#             unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
-#             await interaction.user.remove_roles(unverifRole)
-#             await interaction.user.add_roles(verifRole)
-
-
-#         return callback
-    
-#     async def none_callback(self, interaction: discord.Interaction):
-#         # Verification Role
-#         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'VERIFIED'", (interaction.guild.id,))
-#         verifRole = interaction.guild.get_role(cursor.fetchone()[0])
-#         cursor.execute(f"SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'UNVERIFIED'", (interaction.guild.id,))
-#         unverifRole = interaction.guild.get_role(cursor.fetchone()[0])
-
-#         await interaction.user.remove_roles(unverifRole)
-#         await interaction.user.add_roles(verifRole)
-
-#         # Sends confirmation message
-#         await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        
-
-
-
-
-
-        
 
 async def setup(bot):
     await bot.add_cog(verification(bot))
