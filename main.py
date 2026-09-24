@@ -1,7 +1,7 @@
 import dotenv, os, discord, asyncio
 from discord.ext import commands
 from cogs.verification import TagButtons
-from cogs.submissions import submissionButtons
+from cogs.submissions import submission_buttons
 
 
 # Gets and loads the information from .env for os
@@ -19,7 +19,7 @@ async def load():
 # Setup hook
 async def setup_hook():
     client.add_view(TagButtons())
-    client.add_view(submissionButtons())
+    client.add_view(submission_buttons())
 
 client.setup_hook = setup_hook
 

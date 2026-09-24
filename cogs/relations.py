@@ -23,10 +23,11 @@ class relations(commands.Cog):
                    relationType STRING,
                    blurb STRING,
                    PRIMARY KEY (guildID, userID, muse, relationMuse)
-                   FOREIGN KEY (guildID, userID, muse) REFERENCES museDatabase (guildID, userID, muse)
-                   ON DELETE CASCADE ON UPDATE CASCADE
-                   FOREIGN KEY (relationMuse) REFERENCES museDatabase(muse)
+                   FOREIGN KEY (muse, userID, guildID) REFERENCES museDatabase (muse, userID, guildID)
+                   ON DELETE CASCADE ON UPDATE CASCADE,
+                   FOREIGN KEY (relationMuse, guildID) REFERENCES museDatabase (muse, guildID)
                    ON DELETE CASCADE ON UPDATE CASCADE)""")
+        db.execute(f"PRAGMA foreign_keys = ON")
         db.commit()
         print("relations.py -- ONLINE")
 

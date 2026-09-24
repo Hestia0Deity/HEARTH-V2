@@ -23,7 +23,9 @@ class reservations(commands.Cog):
         messageID INT)""")
         db.commit()
         print("reservations.py -- ONLINE")
-        self.reservations_loop.start()
+
+        if not self.reservations_loop.is_running():
+            self.reservations_loop.start()
 
 
 

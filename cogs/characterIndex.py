@@ -73,47 +73,7 @@ class characterIndex(commands.Cog):
             await interaction.response.send_message("No character with that name could be found.", ephemeral=True)
 
 
-    # /delete-muse
-    @app_commands.command(name="delete-muse", description="Deletes the specified muse.")
-    @app_commands.describe(
-        muse = "The name of the muse to be deleted, needs to be exact."
-    )
-    async def delete_muse(self, interaction:discord.Interaction, muse:str):
-        cursor.execute("SELECT * FROM museDatabase WHERE guildID = ? AND muse = ? COLLATE NOCASE",
-                       (interaction.guild.id, muse))
-        muse_result = cursor.fetchone()
-
-        # Checks if the muse even exists
-        if muse_result is None: 
-            await interaction.response.send_message(f"Could not find the muse {muse}, please try again.", ephemeral=True)
-            return
-        # Checks if the muse is not the user, and if they don't have delete permissions
-        elif muse_result[1] != interaction.user.id and not interaction.user.guild_permissions.manage_roles:
-            await interaction.response.send_message(f"You do not own the muse {muse}.", ephemeral=True)
-        
-        # Deletes the muse
-        cursor.execute("DELETE FROM museDatabase WHERE guildID = ? AND muse = ? COLLATE NOCASE",
-                       (interaction.guild.id, muse))
-        db.commit()
-
-        # Deleting the accepted message link, if it exists
-        cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = ?",
-                    (interaction.guild.id, "ACCEPTED"))
-        accepted_channel = interaction.guild.get_channel(cursor.fetchone()[0])
-
-        try:
-            accepted_message = await accepted_channel.fetch_message(muse_result[4])
-            await accepted_message.delete()
-        except:
-            print(f"{datetime.now()} | Could not delete the accepted message of {muse}")
-
-        # Final response and logging.
-        await interaction.response.send_message("The following changes have been made:\n"
-                                                +f"-# *{muse} → DELETED*", ephemeral=True)
-        await log_action(interaction, 3, "/delete-muse", 
-                         f"<@{interaction.user.id}> has deleted the character "+
-                         f"{muse}, owned by <@{muse_result[1]}>")
-        
+    
 
     # /muse-index
     @app_commands.command(name="muse-index", description="Shows a list of a user's muses/characters.")
@@ -122,6 +82,9 @@ class characterIndex(commands.Cog):
         hidden = "Whether or not the visible should be only visible to you. (Default = True)"
     )
     async def muse_index(self, interaction:discord.Interaction, user:discord.User = None, hidden:bool = True):
+        # Defers interaction
+        await interaction.response.defer(ephemeral=hidden, thinking=True)
+        
         # Sets the default user to the command author if it isn't already set.
         if user == None: user = interaction.user
         
@@ -152,12 +115,7 @@ class characterIndex(commands.Cog):
         # Creates a list of names, with document links hyperlinked.
         linked_names = []
         for muse in muses:
-            try:
-                accepted_message = await accepted_channel.fetch_message(muse[4])
-                linked_names.append(f"[{muse[2]}](" +
-                    re.search(r"\((https:\/\/[^)]*)\)", accepted_message.content).group(1) + ")")
-            except:
-                linked_names.append(muse[2])
+            linked_names.append(f"[{muse[2]}]({muse[5]})")
 
         # Dividing the linked names into three equal(ish) fields
         k, m = divmod(len(muse_names), 3)
@@ -170,7 +128,7 @@ class characterIndex(commands.Cog):
         for names in chunked_names:
             index_embed.add_field(name="‎", value="\n".join(names))
 
-        await interaction.response.send_message(embed=index_embed, ephemeral=hidden, view=SearchResults(muses))
+        await interaction.followup.send(embed=index_embed, ephemeral=hidden, view=SearchResults(muses))
     
 
     # /edit-profile
@@ -548,12 +506,26 @@ class EditProfileModal(discord.ui.Modal):
         # Adding the relevant inputs
         for value in values:
             pos = self.field_map.get(value)
-            item = discord.ui.TextInput(
-                label=value,
-                default=muse[pos],
-                style= discord.TextStyle.short if pos != 15 else discord.TextStyle.paragraph,
-                required=False
-            )
+
+            # if it is an arcane level
+            if pos == 9:
+                item = discord.ui.Label(
+                    text="Arcane Level",
+                    component=discord.ui.Select(options=[
+                        discord.SelectOption(label="Theios/Ascended Arcanist", value="Theios/Ascended Arcanist"),
+                        discord.SelectOption(label="Megistos/High Arcanist", value="Megistos/High Arcanist"),
+                        discord.SelectOption(label="Mesos/Medium Arcanist", value="Mesos/Medium Arcanist"),
+                        discord.SelectOption(label="Elachistos/Low Arcanist", value="Elachistos/Low Arcanist")
+                    ])
+                )
+            else:
+                # every other type
+                item = discord.ui.TextInput(
+                    label=value,
+                    default=muse[pos],
+                    style= discord.TextStyle.short if pos != 15 else discord.TextStyle.paragraph,
+                    required=False
+                )
 
             self.inputs.append(item)
             self.add_item(item)
