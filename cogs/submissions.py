@@ -366,7 +366,7 @@ class EditProfileModal(discord.ui.Modal):
         else: faceclaim = self.name.value; completed_log += f"> - Faceclaim → {self.faceclaim.value}\n"
 
         if self.faction.value == "": faction = None
-        else: faction = self.fcation.value; completed_log += f"> - Faction → {self.faction.value}\n"
+        else: faction = self.faction.value; completed_log += f"> - Faction → {self.faction.value}\n"
         
         if self.sexuality.value == "": sexuality = None
         else: sexuality = self.sexuality.value; completed_log += f"> - Sexuality → {self.sexuality.value}\n"
