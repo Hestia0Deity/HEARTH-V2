@@ -228,7 +228,7 @@ class AcceptanceModal(discord.ui.Modal, title="Acceptance Modal"):
         userID = int(interaction.message.embeds[0].footer.text.split("|")[0])
         user = interaction.guild.get_member(userID)
         submissionLink = re.findall(r'(https?://\S+)',originalMessage.content)
-        acceptedMessage = await accepted_channel.send(f"**[{self.name.value}]({submissionLink[0]})** — <@{user.id}>")
+        acceptedMessage = await accepted_channel.send(f"**[{self.name.value}]({submissionLink[0]})** — <@{user.id}>", silent=True)
 
         # Adding to database
         if self.faceclaim.value != "": await addCharacter(interaction, self.name.value, user, acceptedMessage.id, self.faceclaim.value, submissionLink[0])
@@ -395,7 +395,6 @@ class EditProfileModal(discord.ui.Modal):
                     )
             
             await interaction.message.edit()
-
 
     
 

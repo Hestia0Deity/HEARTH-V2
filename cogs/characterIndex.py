@@ -73,8 +73,6 @@ class characterIndex(commands.Cog):
             await interaction.response.send_message("No character with that name could be found.", ephemeral=True)
 
 
-    
-
     # /muse-index
     @app_commands.command(name="muse-index", description="Shows a list of a user's muses/characters.")
     @app_commands.describe(
