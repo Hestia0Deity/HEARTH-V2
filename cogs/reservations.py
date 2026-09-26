@@ -74,11 +74,11 @@ class reservations(commands.Cog):
             elif points[0] - req_points < 0 and not interaction.user.guild_permissions.administrator:
                 await interaction.response.send_message(f"You need {req_points} points to reserve a faceclaim for {days} days, and you only have {points[0]} points.", ephemeral=True)
                 return
-
-            # editing their points
-            cursor.execute(f"UPDATE pointsDatabase SET points = ? WHERE userID = ? AND guildID = ?",
-                           ((points[0]-req_points), interaction.user.id, interaction.guild.id))
-            db.commit()
+            elif not interaction.user.guild_permissions.administrator:
+                # editing their points
+                cursor.execute(f"UPDATE pointsDatabase SET points = ? WHERE userID = ? AND guildID = ?",
+                            ((points[0]-req_points), interaction.user.id, interaction.guild.id))
+                db.commit()
             
 
         # Gets the reservations channel
