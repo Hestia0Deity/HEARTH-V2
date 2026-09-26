@@ -32,7 +32,11 @@ class reservations(commands.Cog):
 
     # /reserve-faceclaim faceclaim:string
     @app_commands.command(name="reserve-faceclaim", description="Reserves a faceclaim")
-    async def reserve_faceclaim(self, interaction:discord.Interaction, faceclaim:str):
+    @app_commands.describe(
+        faceclaim = "The name of the faceclaim, format [name] ([Game]), eg. Himeko (Honkai: Star Rail)",
+        days = "1-21 days, default 7. Any greater than the default will cost 50 points, check your points using /get-user-stats."
+    )
+    async def reserve_faceclaim(self, interaction:discord.Interaction, faceclaim:str, days:int=7):
         # Checks if anyone has used this faceclaim
         cursor.execute(f"SELECT muse, faceclaim FROM museDatabase WHERE guildID = ? AND faceclaim = ?",
                        (interaction.guild.id, faceclaim))
@@ -50,13 +54,40 @@ class reservations(commands.Cog):
                                                     f"already. This reservation expires on <t:{resFaceclaim[2]}> (<t:{resFaceclaim[2]}:R>)")
             return
 
+        # Points system
+        if days > 7:
+            # points required to reserve for x amount of days
+            req_points = (days-7) * 50
+
+            # getting the user's total points
+            cursor.execute(f"SELECT points FROM pointsDatabase WHERE userID = ? AND guildID = ?",
+            (interaction.user.id, interaction.guild.id))
+            points = cursor.fetchone()
+
+            # checking if the user has any points, if its greater than 21 days, or if they have enough
+            if points == None:
+                await interaction.response.send_message("You do not have any points, and cannot reserve a faceclaim for longer than 7 days.", ephemeral=True)
+                return
+            elif days > 21:
+                await interaction.response.send_message("You cannot reserve a faceclaim for longer than 21 days.", ephemeral=True)
+                return
+            elif points[0] - req_points < 0 and not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(f"You need {req_points} points to reserve a faceclaim for {days} days, and you only have {points[0]} points.", ephemeral=True)
+                return
+
+            # editing their points
+            cursor.execute(f"UPDATE pointsDatabase SET points = ? WHERE userID = ? AND guildID = ?",
+                           ((points[0]-req_points), interaction.user.id, interaction.guild.id))
+            db.commit()
+            
+
         # Gets the reservations channel
         cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'RESERVATIONS'",
                                (interaction.guild.id,))
         reservationChannel = interaction.guild.get_channel(cursor.fetchone()[0])
 
         # Message ID
-        expires = int(datetime.timestamp(datetime.now() + timedelta(days=7)))
+        expires = int(datetime.timestamp(datetime.now() + timedelta(days=days)))
         message = await reservationChannel.send(f"{faceclaim} — <@{interaction.user.id}>\n-# <t:{expires}:d> (<t:{expires}:R>)")
 
         # Adds the faceclaim to the reserved list.
