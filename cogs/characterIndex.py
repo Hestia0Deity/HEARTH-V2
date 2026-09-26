@@ -369,7 +369,7 @@ async def get_character_embed(interaction: discord.Interaction, muse_list: list,
     if info_list[12] is not None: 
         try:
             file = discord.File(info_list[12], filename=info_list[12].split("/")[-1])
-            embed.set_thumbnail(url=f"attachment://{info_list[12].split("/")[-1]}")
+            embed.set_thumbnail(url=f"attachment://{info_list[12].split('/')[-1]}")
         except:
             embed.set_thumbnail(url=interaction.guild.get_member(muse_list[1]).avatar.url)
             file = None
