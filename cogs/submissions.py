@@ -198,8 +198,9 @@ class submission_buttons(discord.ui.View):
         self.remove_item(button)
 
         # Edits the message to display which admin is handling the submission
-        claimed_embed = submission_embed
+        claimed_embed = submission_embed.copy()
         claimed_embed.description += f"\n\n **Your submission will be handled by:** <@{interaction.user.id}>"
+        claimed_embed.footer = interaction.message.embeds[0].footer.text
         await interaction.message.edit(embed=claimed_embed, view=self)
 
         # Confirms with the admin
