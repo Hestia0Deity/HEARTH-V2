@@ -32,4 +32,4 @@ async def sync(ctx):
     
 # Running the bot
 asyncio.run(load())
-client.run(os.environ.get('BTOKEN'))
+client.run(os.environ.get('TOKEN'))
