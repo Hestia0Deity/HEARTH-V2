@@ -71,13 +71,13 @@ class reservations(commands.Cog):
             elif days > 21:
                 await interaction.response.send_message("You cannot reserve a faceclaim for longer than 21 days.", ephemeral=True)
                 return
-            elif points - req_points < 0:
-                await interaction.response.send_message(f"You need {req_points} to reserve a faceclaim for {days} days, and you only have {points}.", ephemeral=True)
+            elif points[0] - req_points < 0:
+                await interaction.response.send_message(f"You need {req_points} to reserve a faceclaim for {days} days, and you only have {points[0]}.", ephemeral=True)
                 return
 
             # editing their points
             cursor.execute(f"UPDATE pointsDatabase SET points = ? WHERE userID = ? AND guildID = ?",
-                           ((points-req_points), interaction.user.id, interaction.guild.id))
+                           ((points[0]-req_points), interaction.user.id, interaction.guild.id))
             db.commit()
             
 
