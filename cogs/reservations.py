@@ -71,7 +71,7 @@ class reservations(commands.Cog):
             elif days > 21:
                 await interaction.response.send_message("You cannot reserve a faceclaim for longer than 21 days.", ephemeral=True)
                 return
-            elif points[0] - req_points < 0:
+            elif points[0] - req_points < 0 and not interaction.user.guild_permissions.administrator:
                 await interaction.response.send_message(f"You need {req_points} points to reserve a faceclaim for {days} days, and you only have {points[0]} points.", ephemeral=True)
                 return
 
