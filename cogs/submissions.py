@@ -181,7 +181,7 @@ class submission_buttons(discord.ui.View):
     @discord.ui.button(label="Deny Submission",style=discord.ButtonStyle.red, custom_id="deny")
     async def deny(self, interaction: discord.Interaction, Button: discord.ui.Button):
         if interaction.user.guild_permissions.manage_roles == True:
-            await interaction.response.send_modal(DenialModal())
+            await interaction.response.send_modal(DenialModal(interaction.message))
         else:
             await interaction.response.send_message("You do not have the Manage Roles permission, as such cannot accept/deny applications.", ephemeral=True)
 
@@ -267,6 +267,11 @@ class AcceptanceModal(discord.ui.Modal, title="Acceptance Modal"):
 class DenialModal(discord.ui.Modal, title="Acceptance Modal"):
     name = discord.ui.TextInput(label="Name", style=discord.TextStyle.short, required=True)
     denial_reason = discord.ui.TextInput(label="Reason for Denial", style=discord.TextStyle.paragraph, required=True)
+
+    def __init__(self, message):
+        super().__init__(timeout = None)
+        self.message = message
+
     
     async def on_submit(self, interaction: discord.Interaction):
         # Gets the reviews channel
@@ -275,9 +280,8 @@ class DenialModal(discord.ui.Modal, title="Acceptance Modal"):
         reviewChannel = interaction.guild.get_channel(cursor.fetchone()[0])
 
         # Sending denial message
-        originalMessage = await interaction.channel.fetch_message(interaction.message.embeds[0].footer.text.split("|")[1])
-        userID = int(interaction.message.embeds[0].footer.text.split("|")[0])
-        user = interaction.guild.get_member(userID)
+        originalMessage = await interaction.channel.fetch_message(self.message.embeds[0].footer.text.split("|")[1])
+        userID = userID = int(self.message.embeds[0].footer.text.split("|")[0])
 
         await reviewChannel.send(f"<@{userID}>, your character ({self.name.value}) has been denied. The following reasons were listed as for why:\n>>> " + self.denial_reason.value)
 
