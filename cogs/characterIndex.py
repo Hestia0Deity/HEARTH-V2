@@ -93,7 +93,7 @@ class characterIndex(commands.Cog):
         muse_names = [muse[2] for muse in muses]
 
         if len(muses) == 0:
-            await interaction.followup.send_message("This user has no characters.", ephemeral=True)
+            await interaction.followup.send("This user has no characters.", ephemeral=True)
             return
 
         # Compiles the muses into an embed
