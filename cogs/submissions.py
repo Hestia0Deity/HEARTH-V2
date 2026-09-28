@@ -148,9 +148,12 @@ class submissions(commands.Cog):
     async def on_message(self, message: discord.Message):
         if message is None: return
         if message.interaction_metadata: return
-        cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'SUBMISSIONS'",
+        try:
+            cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'SUBMISSIONS'",
                        (message.guild.id,))
-        submissionChannel = message.guild.get_channel(cursor.fetchone()[0])
+            submissionChannel = message.guild.get_channel(cursor.fetchone()[0])
+        except:
+            return
         
         if message.channel.id != submissionChannel.id: return
         if message.author.bot: return
