@@ -139,7 +139,7 @@ class verification(commands.Cog):
 class TagButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        tags = ["roleplay", "fantasy", "fantasy-rp", "anime-rp", "yuri"]
+        tags = ["roleplay", "fantasy", "rp", "anime-rp", "yuri"]
 
         for tag in tags:
             button = discord.ui.Button(
