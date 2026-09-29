@@ -25,13 +25,16 @@ class verification(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message is None: return
-        if message.interaction_metadata: return
-        cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'INTROS'",
-                       (message.guild.id,))
-        result = cursor.fetchone()
-        if result[0] is None: return
-        introChannel = message.guild.get_channel(result[0])
+        try:
+            if message is None: return
+            if message.interaction_metadata: return
+            cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = 'INTROS'",
+                        (message.guild.id,))
+            result = cursor.fetchone()
+            if result[0] is None: return
+            introChannel = message.guild.get_channel(result[0])
+        except:
+            return
 
         if message.channel != introChannel: return 
         if message.author.bot: return
