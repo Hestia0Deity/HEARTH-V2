@@ -215,6 +215,9 @@ class AcceptanceModal(discord.ui.Modal, title="Acceptance Modal"):
     faceclaim = discord.ui.TextInput(label="Faceclaim", style=discord.TextStyle.short, required=False, placeholder="Leave blank if none.")
     
     async def on_submit(self, interaction: discord.Interaction):
+        # Defers response
+        await interaction.response.defer(ephemeral=True)
+        
         # Gets the accepted characters channel
         cursor.execute("SELECT classID FROM administrationDatabase WHERE guildID = ? AND purpose = ?",
                     (interaction.guild.id, "ACCEPTED"))
@@ -224,7 +227,7 @@ class AcceptanceModal(discord.ui.Modal, title="Acceptance Modal"):
         cursor.execute("SELECT muse FROM museDatabase WHERE guildID = ? AND muse = ?",
                        (interaction.guild.id, self.name.value))
         result = cursor.fetchone()
-        if result is not None: await interaction.response.send_message("A character with this name already exists", ephemeral=True); return
+        if result is not None: await interaction.followup.send("A character with this name already exists", ephemeral=True); return
 
         # Sending accepted message
         originalMessage = await interaction.channel.fetch_message(interaction.message.embeds[0].footer.text.split("|")[1])
@@ -240,7 +243,7 @@ class AcceptanceModal(discord.ui.Modal, title="Acceptance Modal"):
                          f"has accepted the character {self.name.value}.")
 
         # Deleting old messages
-        await interaction.response.send_message("Character accepted successfully", ephemeral=True)
+        await interaction.followup.send("Character accepted successfully", ephemeral=True)
         await interaction.message.delete()
         await originalMessage.delete()
 
