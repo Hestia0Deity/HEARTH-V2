@@ -52,6 +52,9 @@ class submissions(commands.Cog):
                    """)
         db.commit()
         db.execute(f"PRAGMA foreign_keys = ON")
+
+        if not self.submissions_check.is_running():
+                    self.submissions_check.start()
         
         print("submissions.py -- ONLINE")
 
