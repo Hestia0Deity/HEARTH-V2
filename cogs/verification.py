@@ -162,7 +162,10 @@ class TagButtons(discord.ui.View):
     async def verification_button(self, interaction: discord.Interaction):
         # Sends a confirmation message
         await interaction.response.send_message("Verification complete, thank you!", ephemeral=True)
-        await interaction.user.send('''Thank you for verifying! You should now have access to an introductions channel, in which you can send an introduction, which will give you access to the rest of the server!''')
+        try:
+            await interaction.user.send('''Thank you for verifying! You should now have access to an introductions channel, in which you can send an introduction, which will give you access to the rest of the server!''')
+        except:
+            pass
         
         #  Check if exists
         cursor.execute(f"SELECT tagUses FROM tagDatabase WHERE guildID = ? AND tag = ?",(interaction.guild.id, interaction.data["custom_id"]))
