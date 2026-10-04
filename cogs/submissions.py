@@ -178,7 +178,7 @@ class submissions(commands.Cog):
         cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE purpose = 'SUBMISSIONS'")
         submission_channels = cursor.fetchall()
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=2)
 
         # Gets all the messages for every channel
         for channel in submission_channels:
@@ -194,7 +194,7 @@ class submissions(commands.Cog):
                     continue
 
                 # checks if it has been there longer than a day
-                if datetime.now(timezone.utc) - message.created_at > timedelta(days=3):
+                if datetime.now(timezone.utc) - message.created_at > timedelta(days=2):
                     cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE guildID = ? AND purpose = 'MANAGEMENT'",
                                    (channel[1],))
                     
@@ -206,7 +206,7 @@ class submissions(commands.Cog):
                     if managementChannel is None:
                         continue
 
-                    await managementChannel.send(f"[**This submission**]({message.jump_url}) hasn't been reviewed in over three days")
+                    await managementChannel.send(f"[**This submission**]({message.jump_url}) hasn't been reviewed in over two days")
                 
 
 
