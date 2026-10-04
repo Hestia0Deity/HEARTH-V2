@@ -1,8 +1,8 @@
 from discord.utils import MISSING
 import discord, sqlite3, os, dotenv, random, re
 import sqlite3
-from datetime import datetime
-from discord.ext import commands
+from datetime import datetime, timedelta, timezone
+from discord.ext import commands, tasks
 from discord import app_commands
 from cogs.administration import log_action
 
@@ -10,6 +10,9 @@ from cogs.administration import log_action
 dotenv.load_dotenv()
 db = sqlite3.connect("main.db")
 cursor = db.cursor()
+
+# accepted sites
+accepted_sites = ["docs.google.com", "carrd.co", "crd.co", ".drr.ac", ".ju.mp", ".uwu.ai"]
 
 # Miscellaneous Variables
 submission_embed = discord.Embed(colour=discord.Colour.brand_green(), 
@@ -158,13 +161,50 @@ class submissions(commands.Cog):
         if message.channel.id != submissionChannel.id: return
         if message.author.bot: return
         if "https://" not in message.content: return
-        if not any(word in message.content for word in ["docs.google.com", "carrd.co"]): return
+        if not any(word in message.content for word in accepted_sites): return
 
         subEmbed = submission_embed.copy()
         subEmbed.set_footer(text=str(message.author.id)+"|"+str(message.id))
         await message.channel.send(embed=subEmbed, view=submission_buttons())
         
 
+
+    @tasks.loop(seconds=10)
+    async def submissions_check(self):
+        # Gets all the submission channels
+        cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE purpose = 'SUBMISSIONS'")
+        submission_channels = cursor.fetchall()
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+
+        # Gets all the messages for every channel
+        for channel in submission_channels:
+            reservationChannel:discord.TextChannel = self.bot.get_channel(channel[0])
+            if reservationChannel is None:
+                continue
+
+
+            # Loops through messages, checking for docs links
+            message:discord.Message
+            async for message in reservationChannel.history(limit=None, before=cutoff):
+                if "https://" not in message.content or not any(word in message.content for word in accepted_sites): 
+                    continue
+
+                # checks if it has been there longer than a day
+                if datetime.now(timezone.utc) - message.created_at > timedelta(days=3):
+                    cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE guildID = ? AND purpose = 'MANAGEMENT'",
+                                   (channel[1],))
+                    
+                    # Checks if it exists
+                    managementID = cursor.fetchone()
+                    if managementID is None: 
+                        continue
+                    managementChannel:discord.TextChannel = self.bot.get_channel(managementID)
+                    if managementChannel is None:
+                        continue
+
+                    await managementChannel.send(f"[**This submission**]({message.jump_url}) hasn't been reviewed in over three days")
+                
 
 
 class submission_buttons(discord.ui.View):
