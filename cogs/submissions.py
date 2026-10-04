@@ -1,5 +1,5 @@
 from discord.utils import MISSING
-import discord, sqlite3, os, dotenv, random, re
+import discord, sqlite3, os, dotenv, random, re, asyncio
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
@@ -172,7 +172,7 @@ class submissions(commands.Cog):
         
 
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(hours=24)
     async def submissions_check(self):
         # Gets all the submission channels
         cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE purpose = 'SUBMISSIONS'")
@@ -187,26 +187,42 @@ class submissions(commands.Cog):
                 continue
 
 
-            # Loops through messages, checking for docs links
-            message:discord.Message
+            # Grabs the management channel
+            cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE guildID = ? AND purpose = 'MANAGEMENT'",
+                           (channel[1],))
+                                
+            # Checks if it exists
+            managementID = cursor.fetchone()
+            if managementID is None: 
+                continue
+            managementChannel:discord.TextChannel = self.bot.get_channel(managementID[0])
+            if managementChannel is None:
+                continue
+
+            # Clears out all previous channel content.
+            await managementChannel.purge(limit=100)
+
+            # Loops through messages, checking for accepted links
             async for message in reservationChannel.history(limit=None, before=cutoff):
                 if "https://" not in message.content or not any(word in message.content for word in accepted_sites): 
                     continue
 
                 # checks if it has been there longer than a day
                 if datetime.now(timezone.utc) - message.created_at > timedelta(days=2):
-                    cursor.execute("SELECT classID, guildID FROM administrationDatabase WHERE guildID = ? AND purpose = 'MANAGEMENT'",
-                                   (channel[1],))
-                    
-                    # Checks if it exists
-                    managementID = cursor.fetchone()
-                    if managementID is None: 
-                        continue
-                    managementChannel:discord.TextChannel = self.bot.get_channel(managementID)
-                    if managementChannel is None:
-                        continue
+                    time_since = datetime.now(timezone.utc) - message.created_at
 
-                    await managementChannel.send(f"[**This submission**]({message.jump_url}) hasn't been reviewed in over two days")
+                    reminder_embed = discord.Embed(
+                        title = "Submission Warning",
+                        description=f"It has been approximately {time_since.days} days since this muse was submitted. Please review it soon!",
+                        colour = discord.Colour.orange() if time_since.days < 5 else discord.Colour.red() 
+                    )
+                    try: reminder_embed.set_thumbnail(url=message.author.avatar.url)
+                    except: pass
+
+                    if time_since.days < 5:
+                        await managementChannel.send(embed=reminder_embed)
+                    else:
+                        await managementChannel.send("@everyone", embed=reminder_embed)
                 
 
 
