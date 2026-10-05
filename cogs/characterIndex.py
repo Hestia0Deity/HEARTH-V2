@@ -59,9 +59,9 @@ class characterIndex(commands.Cog):
         # If there are multiple results, sets a list of them which will be inserted into a dropdown
         if len(result) > 1:
             await interaction.response.send_message("The following results have been found, please pick the muse you wish to view.", view=SearchResults(result), ephemeral=hidden)
-        elif result != []:
-            cursor.execute("SELECT * FROM museInfoDatabase WHERE guildID = ? AND muse = ? COLLATE NOCASE",
-                       (interaction.guild.id, f"{muse}"))
+        elif result != []:  
+            cursor.execute("SELECT * FROM museInfoDatabase WHERE guildID = ? AND userID = ? AND muse = ? COLLATE NOCASE",
+                       (interaction.guild.id, result[0][1], result[0][2]))
             muse_info = cursor.fetchone()
 
             museEmbed, file = await get_character_embed(interaction, result[0], muse_info)
